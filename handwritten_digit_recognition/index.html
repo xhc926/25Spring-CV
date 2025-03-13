@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手写数字识别</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <style>
+        #canvas-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        canvas {
+            border: 2px solid white;
+            background-color: black;
+            touch-action: none;
+        }
+        button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h2 style="text-align: center;">手写数字识别</h2>
+    <div id="canvas-container">
+        <canvas id="canvas" width="200" height="200"></canvas>
+        <br>
+        <button onclick="clearCanvas()">清空</button>
+        <button onclick="predict()">识别</button>
+    </div>
+    <div id="label-container" style="text-align: center; margin-top: 20px;"></div>
+
+    <script>
+        const URL = "./digit-recog-model/";  // 模型路径
+        let model, labelContainer;
+
+        async function loadModel() {
+            model = await tmImage.load(URL + "model.json", URL + "metadata.json");
+            labelContainer = document.getElementById("label-container");
+        }
+
+        // 初始化画板
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        let drawing = false;
+
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 15;
+        ctx.lineCap = "round";
+
+        canvas.addEventListener("mousedown", startDraw);
+        canvas.addEventListener("mousemove", draw);
+        canvas.addEventListener("mouseup", stopDraw);
+        canvas.addEventListener("mouseout", stopDraw);
+
+        canvas.addEventListener("touchstart", startDraw);
+        canvas.addEventListener("touchmove", drawTouch);
+        canvas.addEventListener("touchend", stopDraw);
+
+        function startDraw(event) {
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(event.offsetX, event.offsetY);
+        }
+
+        function draw(event) {
+            if (!drawing) return;
+            ctx.lineTo(event.offsetX, event.offsetY);
+            ctx.stroke();
+        }
+
+        function drawTouch(event) {
+            if (!drawing) return;
+            const touch = event.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+            ctx.stroke();
+            event.preventDefault();
+        }
+
+        function stopDraw() {
+            drawing = false;
+        }
+
+        function clearCanvas() {
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            labelContainer.innerHTML = "";
+        }
+
+        async function predict() {
+            let tempCanvas = document.createElement("canvas");
+            tempCanvas.width = 28;
+            tempCanvas.height = 28;
+            let tempCtx = tempCanvas.getContext("2d");
+            // 务必改成28*28像素，因为训练时所用的图片也是这个大小
+            tempCtx.drawImage(canvas, 0, 0, 28, 28);
+            
+            let img = new Image();
+            img.src = tempCanvas.toDataURL("image/png");
+
+            img.onload = async function () {
+                const prediction = await model.predict(img);
+                labelContainer.innerHTML = "";
+                prediction.sort((a, b) => b.probability - a.probability); // 按概率降序
+                for (let i = 0; i < prediction.length; i++) {
+                    let classPrediction = `${prediction[i].className}: ${prediction[i].probability.toFixed(2)}`;
+                    let div = document.createElement("div");
+                    div.innerText = classPrediction;
+                    labelContainer.appendChild(div);
+                }
+            };
+        }
+
+        loadModel();
+    </script>
+</body>
+</html>
