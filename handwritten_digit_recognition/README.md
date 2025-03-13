@@ -32,5 +32,5 @@ http-server -S -C cert.pem -o
 
 digit_recognition.ipynb基于tenserflow实现，digit_recognition2.ipynb基于pytorch实现。运行结果见下：  
 ![alt text](image-5.png)
-![alt text](image-6.png)
+![alt text](image-6.png)  
 程序所需的依赖库已在requirements.txt中给出  
